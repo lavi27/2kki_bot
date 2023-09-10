@@ -1,0 +1,22 @@
+{
+	"name": "2kki_bot",
+	"version": "1.0.0",
+	"main": "index.js",
+	"repository": "https://github.com/lavi27/2kki_bot",
+	"author": "lavi <62757958+lavi27@users.noreply.github.com>",
+	"license": "MIT",
+	"packageManager": "yarn@3.6.3",
+	"scripts": {
+		"start": "cross-env NODE_ENV=production ts-node src/index.ts",
+		"dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only ./src/index.ts",
+		"watch": "tsc --watch",
+		"build": "tsc -p ."
+	},
+	"devDependencies": {
+		"@types/node": "^20.6.0",
+		"@yarnpkg/sdks": "^3.0.0-rc.50",
+		"cross-env": "^7.0.3",
+		"ts-node-dev": "^2.0.0",
+		"typescript": "^5.2.2"
+	}
+}
