@@ -1,10 +1,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 import axios from 'axios';
-import discord, { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import discord, { Client, Collection, Events, GatewayCloseCodes, GatewayIntentBits } from 'discord.js';
 import { BOT_TOKEN } from '../config.json';
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const client = new Client({ intents: [
+  GatewayIntentBits.Guilds,
+  GatewayIntentBits.GuildMessages,
+  GatewayIntentBits.MessageContent
+] });
 
 //client.commands = new Collection();
 const prefix = '.';
@@ -15,11 +19,15 @@ const apiURL = 'https://2kki.app';
 const handleError = (err: Error, msg: discord.Message) => {
   console.error(err);
   msg.reply(`[에러] 통신중 에러가 발생했습니다. @lavi27
-  ```${err}````);
+${err}`
+  );
 }
 
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
   console.log(`Logged in as ${client.user?.tag}!`);
+
+  // const resData = await axios.get(apiURL + `/data`).catch(err => console.log);
+  // console.log('resData', resData?.data);
 });
 
 client.on(Events.MessageCreate, async (message) => {
@@ -36,29 +44,61 @@ client.on(Events.MessageCreate, async (message) => {
   switch (cmd) {
     case '검색': {
       if (!args[1]) {
-        message.reply(`[문법]
-        .검색 (맵 영문 이름) => 맵 리스트
-        : 주어진 영문 이름과 일치하거나 유사한 맵의 리스트를 출력합니다.`);
+        message.reply(
+`누락된 항목: (맵 영문 이름)
+
+[문법]
+.검색 (맵 영문 이름) => 맵 리스트
+: 주어진 영문 이름과 일치하거나 유사한 맵의 리스트를 출력합니다.`
+        );
 
         return;
       };
 
-      const locName = args[1];
+      const locName = args[0];
       const res = await axios.get('/').catch(err => {handleError(err, message)});
       // const data = res.data, const status = res.status;
+
+      return;
     } case '상세': {
-      const locName = args[1];
-      const resConectedLocs = await axios.get(apiURL + `/getConnectedLocations?locationName=${locName}`).catch(err => {handleError(err, message)});
-      const resLocColors = await axios.get(apiURL + `/getLocationColors?locationName=${locName}`).catch(err => {handleError(err, message)});
-      const resLocInfo = await axios.get(apiURL + `/getLocationInfo?locationName=${locName}?includeRemoved=1`).catch(err => {handleError(err, message)});
-      const resLocMap = await axios.get(apiURL + `/getLocationMaps?locationName=${locName}`).catch(err => {handleError(err, message)});
-      
-      console.log('resConectedLocs', resConectedLocs);
-      console.log('resLocClrs', resLocColors);
-      console.log('resLocInfo', resLocInfo);
-      console.log('resLocMap', resLocMap);
+      const locName = args[0];
+      const finalReqCount = 4;
+      let reqCount = 0;
+
+      let resConectedLocs;
+      let resLocColors;
+      let resLocMap;
+      let resLocData;
+
+      const onAfterRequest = () => {
+        console.log('resConectedLocs', resConectedLocs?.data);
+        console.log('resLocClrs', resLocColors?.data);
+        // console.log('resLocInfo', resLocInfo);
+        console.log('resLocMap', resLocMap?.data);
+        console.log('resLocData', resLocData?.data?.worldData);
+
+        resLocData?.data?.worldData.find(data => {return data.title.toLowerCase() == locName})
+      }
+
+      const checkReqCount = () => {
+        reqCount++;
+        
+        if(reqCount == finalReqCount) {
+          onAfterRequest();
+        }
+      }
+
+      axios.get(apiURL + `/getConnectedLocations?locationName=${locName}`).then(res => {resConectedLocs = res; checkReqCount()}).catch(err => {handleError(err, message)});
+      axios.get(apiURL + `/getLocationColors?locationName=${locName}`)    .then(res => {resLocColors = res; checkReqCount()}).catch(err => {handleError(err, message)});
+      // const resLocInfo =      await axios.get(apiURL + `/getLocationInfo?locationName=${locName}?includeRemoved=1`).catch(err => {handleError(err, message)});
+      axios.get(apiURL + `/getLocationMaps?locationName=${locName}`)      .then(res => {resLocMap = res; checkReqCount()}).catch(err => {handleError(err, message)});
+      axios.get(apiURL + `/locationData?locationNames=${locName}`)        .then(res => {resLocData = res; checkReqCount()}).catch(err => {handleError(err, message)});
+    
+      return;
     } case '도움': {
       message.reply(`test`);
+
+      return;
     }
   }
 });
