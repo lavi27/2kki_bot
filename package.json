@@ -7,23 +7,41 @@
 	"license": "MIT",
 	"packageManager": "yarn@3.6.3",
 	"scripts": {
-		"start": "cross-env NODE_ENV=production ts-node ./src/app.ts",
-		"dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only ./src/app.ts",
+		"start": "cross-env NODE_ENV=production ts-node -r tsconfig-paths/register ./src/app.ts",
+		"dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only -r tsconfig-paths/register ./src/app.ts",
+		"test": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only -r tsconfig-paths/register ./src/test.ts",
 		"watch": "tsc --watch",
-		"build": "tsc -p ."
-	},
-	"devDependencies": {
-		"@types/node": "^20.6.0",
-		"@yarnpkg/sdks": "^3.0.0-rc.50",
-		"cross-env": "^7.0.3",
-		"ts-node-dev": "^2.0.0",
-		"typescript": "^5.2.2"
+		"build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
+		"aaaa": "node -r ./ ./bin/src/app.js",
+		"webpack": "webpack",
+		"webpack_start": "node -r ./ ./dist/bundle.js",
+		"webpack_dev": "nodemon -r ./ ./dist/bundle.js"
 	},
 	"dependencies": {
+		"@types/jsdom": "^21.1.2",
 		"axios": "^1.5.0",
 		"discord.js": "^14.13.0",
+		"jsdom": "^22.1.0",
 		"moment": "^2.29.4",
 		"winston": "^3.10.0",
-		"winston-daily-rotate-file": "^4.7.1"
+		"winston-daily-rotate-file": "^4.7.1",
+		"zlib-sync": "^0.1.8"
+	},
+	"devDependencies": {
+		"@types/node": "^20.6.2",
+		"@types/webpack-node-externals": "^3",
+		"@yarnpkg/sdks": "^3.0.0-rc.50",
+		"cross-env": "^7.0.3",
+		"dotenv": "^16.3.1",
+		"node-loader": "^2.0.0",
+		"nodemon": "^3.0.1",
+		"ts-loader": "^9.4.4",
+		"ts-node-dev": "^2.0.0",
+		"tsc-alias": "^1.8.7",
+		"tsconfig-paths": "^4.2.0",
+		"typescript": "^5.2.2",
+		"webpack": "^5.88.2",
+		"webpack-cli": "^5.1.4",
+		"webpack-node-externals": "^3.0.0"
 	}
 }

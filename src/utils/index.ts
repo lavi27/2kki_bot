@@ -1,75 +1,144 @@
-import { AxiosResponse } from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import discord, { EmbedBuilder } from 'discord.js';
-import { format as _format, createLogger } from 'winston';
+import moment from 'moment';
+import winston from 'winston';
 import winstonDaily from 'winston-daily-rotate-file';
+import dotenv from 'dotenv';
 
-const format = _format.combine(
-	_format.label({
-		label: '[LOGGER]',
-	}),
-	_format.timestamp({
-		format: 'HH:MM:SS',
-	}),
-	_format.printf(
-		(info) => `[${info.level}][${info.timestamp}] ${info.message}`
+import { Command, Direction } from '@root/types';
+import { NODE_TYPE } from '@root/constants';
+
+export const getEnv = () => {
+	dotenv.config();
+
+	const objDefault = {
+		BOT_TOKEN: '',
+		APP_ID: '',
+		PREFIX: '',
+		ERROR_RECEIVE_ID: '',
+		API_URL: '',
+		ICON_URL: '',
+		WIKI_URL: '',
+	};
+
+	return Object.assign(objDefault, process.env);
+};
+
+const logger = winston.createLogger({
+	format: winston.format.combine(
+		winston.format.timestamp({
+			format: 'HH:MM:SS',
+		}),
+		winston.format.printf(
+			(info) => `[${info.level}][${info.timestamp}] ${info.message}`
+		)
 	),
-	_format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' })
-);
-
-const logger = createLogger({
 	transports: [
 		new winstonDaily({
-			level: 'info',
 			dirname: './log',
 			filename: `%DATE%.log`,
 			datePattern: 'YYYY-MM-DD',
 			maxFiles: 10,
-			format: _format.combine(format),
 		}),
 	],
 });
 
-export const log = (msg: any) => {
-	if (process.env.NODE_ENV === 'dev') {
-		const date = `${(new Date().getHours() % 12 || 12)
-			.toString()
-			.padStart(2, '0')}:${new Date()
-			.getMinutes()
-			.toString()
-			.padStart(2, '0')}:${new Date()
-			.getSeconds()
-			.toString()
-			.padStart(2, '0')}`;
+if (process.env.NODE_ENV !== 'production') {
+	logger.add(
+		new winston.transports.Console({
+			format: winston.format.combine(
+				winston.format.colorize(),
+				winston.format.simple()
+			),
+		})
+	);
+}
 
-		console.log(`[${date}] ${msg}`);
+export { logger };
 
-		if (!(msg instanceof Error)) {
-			logger.info(msg);
+export const generateCommandUseage = (command: Command) => `[문법]
+.${command.name} (${command.type.args
+	.map((arg: any) => arg.name)
+	.join(') (')}) → ${command.type.res}
+: ${command.type.desc}`;
+
+export const lastValue = (array: any[]) => array[array.length - 1];
+
+export const generateDirections = (elem: HTMLElement): Direction[] => {
+	const result: Direction[] = [];
+
+	Array.from(elem.childNodes).map((node) => {
+		const name = node.textContent;
+		let isUrl;
+
+		// @ts-ignore
+		node?.href ? (isUrl = true) : (isUrl = false);
+
+		result.push({ name: name ?? '', isUrl });
+	});
+
+	return result;
+};
+
+export const getMaxValueIndex = (data: number[]) => {
+	return data.indexOf(Math.max(...data));
+};
+
+export const APIConn = axios.create({
+	baseURL: getEnv().API_URL,
+});
+
+export const connError = (
+	err: any,
+	context: discord.Message | discord.ChatInputCommandInteraction
+) => {
+	// err.name = 'connError';
+	logger.error(err);
+
+	if (context) {
+		const embed = new EmbedBuilder()
+			.setTitle('<:warning:1002625629851754537> 연결 에러 발생')
+			.setDescription('서버 관리자에게 연락 부탁드립니다.');
+
+		if (context.channel) {
+			context.channel.send({
+				embeds: [embed],
+				content: `<@${getEnv().ERROR_RECEIVE_ID}>`,
+			});
 		} else {
-			logger.error(msg.stack);
+			context.reply({
+				embeds: [embed],
+				content: `<@${getEnv().ERROR_RECEIVE_ID}>`,
+			});
 		}
 	}
 };
 
-export const connError = (
-	err: Error | AxiosResponse,
-	context: discord.Message
+export const runtimeError = async (
+	err: Error,
+	context?: discord.Message | discord.RepliableInteraction
 ) => {
-	log(err);
-	context.reply(`[에러] 통신중 에러가 발생했습니다. <@469008754097127434>
-\`\`\`${err}\`\`\``);
-};
-
-export const runtimeError = (err: any, context?: any) => {
-	log(err);
+	// err.name = 'runtimeError';
+	logger.error(err.stack);
 
 	if (context) {
 		const embed = new EmbedBuilder()
-			.setTitle('<:warning:1002625629851754537> 에러 발생')
+			.setTitle('<:warning:1002625629851754537> 런타임 에러 발생')
 			.setDescription('서버 관리자에게 연락 부탁드립니다.');
 
-		context.channel.send({ embeds: [embed] });
+		const res = {
+			embeds: [embed],
+			content: `<@${getEnv().ERROR_RECEIVE_ID}>`,
+		};
+
+		if (context instanceof discord.Message) {
+			await context.channel.send(res);
+		} else {
+			await context.followUp(res);
+		}
 	}
+
+	process.exit();
 };
 
 export const korSimilarity = (s1: string, s2: string) => {

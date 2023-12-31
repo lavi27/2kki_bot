@@ -9,4 +9,9 @@
 out
 output
 config.json
+.env
 bin
+dist
+
+log/*
+node_modules

@@ -1,7 +1,8 @@
 import { Collection } from 'discord.js';
+import { Command } from './index';
 
 declare module 'discord.js' {
 	export interface Client {
-		commands: Collection<any, any>;
+		commands: Collection<string, Command>;
 	}
 }
